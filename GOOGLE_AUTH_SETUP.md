@@ -18,7 +18,7 @@ must use the same OAuth Web Client ID.
 8. Add these authorized JavaScript origins:
    - `http://localhost:5173`
    - The exact stable Vercel production origin, for example
-     `https://mynera.vercel.app`
+     `https://mynera-mvp.vercel.app`
 
 Origins must not include a path or trailing API route. Add a preview domain
 separately only when that exact preview deployment must support Google login.

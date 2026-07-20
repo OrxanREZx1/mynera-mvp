@@ -37,14 +37,30 @@ class RegisterSerializer(serializers.ModelSerializer):
     yaradılarkən bu sahələr məcburi olmasın).
     """
 
+    email = serializers.EmailField(
+        error_messages={
+            "blank": "E-poçt ünvanını daxil et.",
+            "invalid": "Düzgün e-poçt ünvanı daxil et.",
+        }
+    )
     password = serializers.CharField(
-        write_only=True, min_length=8, style={"input_type": "password"}
+        write_only=True,
+        min_length=8,
+        style={"input_type": "password"},
+        error_messages={
+            "blank": "Şifrəni daxil et.",
+            "min_length": "Şifrə ən azı 8 simvol olmalıdır.",
+        },
     )
     password2 = serializers.CharField(
         write_only=True,
         min_length=8,
         style={"input_type": "password"},
         label="Şifrə (təkrar)",
+        error_messages={
+            "blank": "Şifrə təkrarını daxil et.",
+            "min_length": "Şifrə ən azı 8 simvol olmalıdır.",
+        },
     )
     status = serializers.ChoiceField(choices=User.Status.choices, required=True)
     it_level = serializers.ChoiceField(choices=User.ITLevel.choices, required=True)
@@ -74,7 +90,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         try:
             validate_password(attrs["password"])
         except DjangoValidationError as exc:
-            raise serializers.ValidationError({"password": list(exc.messages)}) from exc
+            translated_messages = {
+                "password_too_short": "Şifrə ən azı 8 simvol olmalıdır.",
+                "password_too_common": "Bu şifrə çox geniş istifadə olunur. Daha güclü şifrə seç.",
+                "password_entirely_numeric": "Şifrə yalnız rəqəmlərdən ibarət ola bilməz.",
+                "password_too_similar": "Şifrə şəxsi məlumatlara çox oxşardır.",
+            }
+            messages = [
+                translated_messages.get(error.code, str(error.message))
+                for error in exc.error_list
+            ]
+            raise serializers.ValidationError({"password": messages}) from exc
         return attrs
 
     def create(self, validated_data):

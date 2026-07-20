@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { GoogleAuthUiError } from '@/utils/authErrors'
+import { useDelayedFlag } from '@/hooks/useDelayedFlag'
 
 const GOOGLE_SCRIPT_ID = 'google-identity-services'
 const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
@@ -117,6 +118,7 @@ export function GoogleAuthButton({ mode, onCredential, onError }: GoogleAuthButt
   const onCredentialRef = useRef(onCredential)
   const onErrorRef = useRef(onError)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const showServerPreparing = useDelayedFlag(isSubmitting)
   const [status, setStatus] = useState<SetupStatus>(GOOGLE_CLIENT_ID ? 'loading' : 'unavailable')
   const setupErrorRef = useRef<GoogleAuthUiError | null>(GOOGLE_CLIENT_ID ? null : notConfiguredError())
 
@@ -211,7 +213,11 @@ export function GoogleAuthButton({ mode, onCredential, onError }: GoogleAuthButt
           {status === 'loading' ? 'Google hazırlanır...' : 'Google ilə davam et'}
         </Button>
       )}
-      {isSubmitting && <p className="mt-2 text-center text-xs text-ink-500">Google hesabı yoxlanılır...</p>}
+      {isSubmitting && (
+        <p role="status" className="mt-2 text-center text-xs text-ink-500">
+          {showServerPreparing ? 'Server hazırlanır, ilk giriş bir qədər çəkə bilər...' : 'Google hesabı yoxlanılır...'}
+        </p>
+      )}
     </div>
   )
 }

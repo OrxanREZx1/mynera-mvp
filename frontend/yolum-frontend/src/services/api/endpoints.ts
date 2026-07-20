@@ -1,5 +1,5 @@
 import type { AuthUser, ChatMessage, Mentor, MentorCategory, Roadmap } from '@/types'
-import { apiClient, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from './client'
+import { apiClient, ACCESS_TOKEN_KEY, AUTH_REQUEST_TIMEOUT_MS, REFRESH_TOKEN_KEY } from './client'
 import { getSessionId } from '@/utils/session'
 import {
   blogPosts,
@@ -93,29 +93,41 @@ export interface GoogleAuthPayload {
 
 export const authApi = {
   async login(email: string, password: string): Promise<AuthUser> {
-    const { data } = await apiClient.post<AuthResponse>('/auth/login/', {
-      email,
-      password,
-      session_id: getSessionId(),
-    })
+    const { data } = await apiClient.post<AuthResponse>(
+      '/auth/login/',
+      {
+        email,
+        password,
+        session_id: getSessionId(),
+      },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS }
+    )
     storeTokens(data.tokens)
     return toAuthUser(data.user)
   },
 
   async register(payload: RegisterPayload): Promise<AuthUser> {
-    const { data } = await apiClient.post<AuthResponse>('/auth/register/', {
-      ...payload,
-      session_id: getSessionId(),
-    })
+    const { data } = await apiClient.post<AuthResponse>(
+      '/auth/register/',
+      {
+        ...payload,
+        session_id: getSessionId(),
+      },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS }
+    )
     storeTokens(data.tokens)
     return toAuthUser(data.user)
   },
 
   async google(payload: GoogleAuthPayload): Promise<AuthUser> {
-    const { data } = await apiClient.post<AuthResponse>('/auth/google/', {
-      ...payload,
-      session_id: getSessionId(),
-    })
+    const { data } = await apiClient.post<AuthResponse>(
+      '/auth/google/',
+      {
+        ...payload,
+        session_id: getSessionId(),
+      },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS }
+    )
     storeTokens(data.tokens)
     return toAuthUser(data.user)
   },

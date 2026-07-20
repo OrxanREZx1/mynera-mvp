@@ -13,7 +13,8 @@ import { SocialAuthButtons } from '@/components/shared/SocialAuthButtons'
 import { useAuth, roleHome } from '@/context/AuthContext'
 import { authApi } from '@/services/api/endpoints'
 import { useToast } from '@/components/ui/use-toast'
-import { googleAuthErrorMessage } from '@/utils/authErrors'
+import { authRequestErrorMessage, googleAuthErrorMessage } from '@/utils/authErrors'
+import { useDelayedFlag } from '@/hooks/useDelayedFlag'
 
 const schema = z.object({
   email: z.string().min(1, 'E-poçt ünvanını daxil et').email('Düzgün e-poçt ünvanı daxil et'),
@@ -34,6 +35,7 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const showServerPreparing = useDelayedFlag(isSubmitting)
 
   const completeLogin = (user: AuthUser) => {
     login(user)
@@ -45,11 +47,11 @@ export default function LoginPage() {
   const onSubmit = async (values: FormValues) => {
     try {
       completeLogin(await authApi.login(values.email, values.password))
-    } catch {
+    } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Daxil olmaq mümkün olmadı',
-        description: 'Məlumatları yoxlayıb yenidən cəhd et.',
+        description: authRequestErrorMessage(error, 'login'),
       })
     }
   }
@@ -141,6 +143,11 @@ export default function LoginPage() {
         <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
           Daxil ol
         </Button>
+        {showServerPreparing && (
+          <p role="status" className="-mt-2 text-center text-xs text-ink-500">
+            Server hazırlanır, ilk giriş bir qədər çəkə bilər...
+          </p>
+        )}
       </form>
 
       <p className="text-center text-sm text-ink-500">

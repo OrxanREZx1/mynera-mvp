@@ -18,7 +18,48 @@ interface CodedError {
 
 interface BackendErrorBody {
   code?: string
-  detail?: string
+  detail?: unknown
+  [key: string]: unknown
+}
+
+type AuthAction = 'login' | 'register'
+
+function flattenErrorMessages(value: unknown): string[] {
+  if (typeof value === 'string') return [value]
+  if (Array.isArray(value)) return value.flatMap(flattenErrorMessages)
+  if (value && typeof value === 'object') {
+    return Object.entries(value)
+      .filter(([key]) => key !== 'code')
+      .flatMap(([, nested]) => flattenErrorMessages(nested))
+  }
+  return []
+}
+
+function isTimeoutError(error: { code?: string; message?: string }): boolean {
+  return error.code === 'ECONNABORTED' || error.message?.toLowerCase().includes('timeout') === true
+}
+
+export function authRequestErrorMessage(error: unknown, action: AuthAction): string {
+  const fallback =
+    action === 'register' ? 'Qeydiyyatı tamamlamaq mümkün olmadı. Yenidən cəhd et.' : 'E-poçt və ya şifrə yanlışdır.'
+
+  if (!axios.isAxiosError<BackendErrorBody>(error)) return fallback
+
+  if (isTimeoutError(error)) {
+    return 'Serverin oyanması gözləniləndən uzun çəkdi. Bir neçə saniyə sonra yenidən cəhd et.'
+  }
+  if (!error.response) {
+    return 'Serverə qoşulmaq mümkün olmadı. İnternet bağlantısını yoxlayıb yenidən cəhd et.'
+  }
+  if (error.response.status === 429) {
+    return 'Çox sayda cəhd edildi. Bir az gözləyib yenidən cəhd et.'
+  }
+  if (error.response.status >= 500) {
+    return 'Serverdə müvəqqəti problem yarandı. Bir az sonra yenidən cəhd et.'
+  }
+
+  const messages = flattenErrorMessages(error.response.data)
+  return messages.length > 0 ? messages.join(' ') : fallback
 }
 
 export function googleAuthErrorMessage(error: unknown): string {
@@ -31,8 +72,11 @@ export function googleAuthErrorMessage(error: unknown): string {
   }
 
   if (axios.isAxiosError<BackendErrorBody>(error)) {
+    if (isTimeoutError(error)) {
+      return 'Serverin oyanması gözləniləndən uzun çəkdi. Bir neçə saniyə sonra yenidən cəhd et.'
+    }
     if (!error.response) {
-      return 'Serverə qoşulmaq mümkün olmadı. Backend serverini başladıb yenidən cəhd et.'
+      return 'Serverə qoşulmaq mümkün olmadı. İnternet bağlantısını yoxlayıb yenidən cəhd et.'
     }
 
     const { code, detail } = error.response.data ?? {}
@@ -42,7 +86,7 @@ export function googleAuthErrorMessage(error: unknown): string {
     if (code === 'google_provider_unavailable') {
       return 'Google doğrulama xidməti müvəqqəti əlçatan deyil. Bir az sonra yenidən cəhd et.'
     }
-    if (detail) return detail
+    if (typeof detail === 'string') return detail
   }
 
   return 'Google ilə daxil olmaq mümkün olmadı. Yenidən cəhd et.'

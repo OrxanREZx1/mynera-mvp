@@ -1,6 +1,9 @@
 import axios from 'axios'
 import { getSessionId } from '@/utils/session'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api'
+export const AUTH_REQUEST_TIMEOUT_MS = 75_000
+
 /**
  * Central axios instance, wired to the real Django REST API
  * (see backend/config/urls.py for the route map).
@@ -16,10 +19,43 @@ export const ACCESS_TOKEN_KEY = 'yolum_token'
 export const REFRESH_TOKEN_KEY = 'yolum_refresh_token'
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 })
+
+let backendWarmupPromise: Promise<boolean> | null = null
+
+/**
+ * Wake Render before a visitor reaches an API-heavy screen. This intentionally
+ * bypasses apiClient so the anonymous X-Session-Id header does not trigger a
+ * preflight request for the health check itself.
+ */
+export function warmBackend(): Promise<boolean> {
+  if (backendWarmupPromise) return backendWarmupPromise
+
+  backendWarmupPromise = (async () => {
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS)
+
+    try {
+      const baseUrl = API_BASE_URL.replace(/\/$/, '')
+      const response = await fetch(`${baseUrl}/health/`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      return response.ok
+    } catch {
+      return false
+    } finally {
+      window.clearTimeout(timeoutId)
+    }
+  })()
+
+  return backendWarmupPromise
+}
 
 apiClient.interceptors.request.use((config) => {
   // Sprint 1 anonymous identity: every request carries the same UUID so
@@ -72,7 +108,8 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
     const status = error.response?.status
-    const isAuthRoute = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/register')
+    const isAuthRoute =
+      originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/register')
 
     if (status === 401 && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true

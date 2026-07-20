@@ -6,8 +6,11 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from .views import health_check
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/health/", health_check, name="health-check"),
     path("api/", include("career.urls")),
     path("api/auth/", include("accounts.urls")),
     path("api/payments/", include("payments.urls")),

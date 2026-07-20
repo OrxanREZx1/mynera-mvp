@@ -9,7 +9,7 @@ import { InterestsStep } from './InterestsStep'
 import { AboutAuthStep } from './AboutAuthStep'
 import { emptyUserOnboardingData, type UserOnboardingData } from './onboardingData'
 import { saveDemoProfile, type DemoItLevel, type DemoStatus } from '@/utils/session'
-import { googleAuthErrorMessage } from '@/utils/authErrors'
+import { authRequestErrorMessage, googleAuthErrorMessage } from '@/utils/authErrors'
 
 type SignupFlow = 'assessment' | 'direct'
 
@@ -55,9 +55,11 @@ export default function UserSignupPage({ flow = 'assessment' }: UserSignupPagePr
       login({ ...user, field: data.fields[0] })
       navigate('/chat')
     } catch (error) {
-      const detail = (error as { response?: { data?: Record<string, unknown> } })?.response?.data
-      const message = detail ? Object.values(detail).flat().join(' ') : 'Məlumatları yoxlayıb yenidən cəhd et.'
-      toast({ variant: 'destructive', title: 'Qeydiyyat mümkün olmadı', description: message })
+      toast({
+        variant: 'destructive',
+        title: 'Qeydiyyat mümkün olmadı',
+        description: authRequestErrorMessage(error, 'register'),
+      })
     }
   }
 

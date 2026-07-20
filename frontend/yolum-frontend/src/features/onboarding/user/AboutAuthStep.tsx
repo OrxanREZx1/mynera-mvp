@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { SocialAuthButtons } from '@/components/shared/SocialAuthButtons'
+import { useDelayedFlag } from '@/hooks/useDelayedFlag'
 
 const schema = z.object({
   fullName: z.string().min(2, 'Adını daxil et'),
@@ -34,6 +35,7 @@ export function AboutAuthStep({ onSubmit, onGoogleSubmit, onGoogleError, onBack 
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { agree: false } })
+  const showServerPreparing = useDelayedFlag(isSubmitting)
 
   return (
     <div className="flex flex-col gap-7">
@@ -124,6 +126,11 @@ export function AboutAuthStep({ onSubmit, onGoogleSubmit, onGoogleError, onBack 
             Qeydiyyatdan keç
           </Button>
         </div>
+        {showServerPreparing && (
+          <p role="status" className="-mt-2 text-center text-xs text-ink-500">
+            Server hazırlanır, ilk qeydiyyat bir qədər çəkə bilər...
+          </p>
+        )}
       </form>
     </div>
   )

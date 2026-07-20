@@ -143,3 +143,59 @@ class GoogleAuthConfigurationTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
         self.assertEqual(response.data["code"], "google_not_configured")
+
+
+class RegistrationTests(APITestCase):
+    endpoint = "/api/auth/register/"
+
+    def valid_payload(self, **overrides):
+        payload = {
+            "email": "fresh.visitor@example.com",
+            "full_name": "Fresh Visitor",
+            "status": "university_student",
+            "it_level": "know_basics",
+            "password": "StandDemo!2026",
+            "password2": "StandDemo!2026",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_registration_returns_jwt_and_claims_anonymous_session(self):
+        session_id = uuid.uuid4()
+        anonymous_event = Event.objects.create(
+            session_id=session_id,
+            event_name=EventName.LANDING_PAGE_VIEWED,
+        )
+        payload = self.valid_payload(session_id=str(session_id))
+
+        response = self.client.post(self.endpoint, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("access", response.data["tokens"])
+        self.assertIn("refresh", response.data["tokens"])
+        anonymous_event.refresh_from_db()
+        self.assertEqual(anonymous_event.user.email, payload["email"])
+
+    def test_duplicate_email_returns_clear_validation_message(self):
+        get_user_model().objects.create_user(
+            email="fresh.visitor@example.com",
+            password="StandDemo!2026",
+        )
+
+        response = self.client.post(self.endpoint, self.valid_payload(), format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["email"][0], "Bu email artıq qeydiyyatdan keçib.")
+
+    def test_common_password_returns_clear_validation_message(self):
+        response = self.client.post(
+            self.endpoint,
+            self.valid_payload(password="password123", password2="password123"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["password"][0],
+            "Bu şifrə çox geniş istifadə olunur. Daha güclü şifrə seç.",
+        )

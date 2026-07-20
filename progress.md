@@ -36,7 +36,8 @@
 - [x] Add Render build and production backend configuration.
 - [x] Integrate verified Google sign-in/sign-up with JWT account linking and anonymous-session claiming.
 - [x] Restore visible Google/Apple provider UI and user-friendly auth failure states.
-- [ ] Configure the Google Cloud Web Client ID and run real-account smoke tests on local/Vercel.
+- [x] Configure the Google Cloud Web Client ID, publish the OAuth app, and run a real-account Vercel smoke test.
 - [ ] Implement real Sign in with Apple after Apple Developer credentials are available.
-- [ ] Configure production environment variables on Vercel and Render.
-- [ ] Deploy and run production smoke tests.
+- [x] Configure production environment variables on Vercel and Render.
+- [x] Deploy and run production registration, Google auth, CORS, and health smoke tests.
+- [ ] Upgrade Render to an always-on plan before the physical stand demo.

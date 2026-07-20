@@ -40,4 +40,7 @@
 - [ ] Implement real Sign in with Apple after Apple Developer credentials are available.
 - [x] Configure production environment variables on Vercel and Render.
 - [x] Deploy and run production registration, Google auth, CORS, and health smoke tests.
+- [x] Remove local secrets, SQLite data, and generated Python bytecode from Git tracking.
+- [x] Pass the local release gate: 19 Django tests, migration check, ESLint, TypeScript, and Vite build.
+- [ ] Complete live end-to-end QA for registration, Google auth, anonymous demo, mentors, roadmap, and AIRA chat.
 - [ ] Upgrade Render to an always-on plan before the physical stand demo.

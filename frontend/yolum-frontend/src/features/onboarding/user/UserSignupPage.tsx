@@ -8,37 +8,22 @@ import { GoalStep } from './GoalStep'
 import { InterestsStep } from './InterestsStep'
 import { AboutAuthStep } from './AboutAuthStep'
 import { emptyUserOnboardingData, type UserOnboardingData } from './onboardingData'
-import { saveDemoProfile, type DemoItLevel, type DemoStatus } from '@/utils/session'
+import type { DemoItLevel, DemoStatus } from '@/utils/session'
 import { authRequestErrorMessage, googleAuthErrorMessage } from '@/utils/authErrors'
 
-type SignupFlow = 'assessment' | 'direct'
+const steps = [{ label: 'Məqsədin' }, { label: 'Maraqların' }, { label: 'Haqqında' }]
 
-interface UserSignupPageProps {
-  flow?: SignupFlow
-}
-
-const assessmentSteps = [{ label: 'Məqsədin' }, { label: 'Maraqların' }, { label: 'Haqqında' }]
-const directSteps = [{ label: 'Status və səviyyə' }]
-
-export default function UserSignupPage({ flow = 'assessment' }: UserSignupPageProps) {
+export default function UserSignupPage() {
   const [stepIndex, setStepIndex] = useState(0)
   const [data, setData] = useState<UserOnboardingData>(emptyUserOnboardingData)
   const { login } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const isDirectFlow = flow === 'direct'
-  const steps = isDirectFlow ? directSteps : assessmentSteps
-
   useEffect(() => {
-    if (!isDirectFlow) void analyticsApi.track('signup_started')
-  }, [isDirectFlow])
+    void analyticsApi.track('signup_started')
+  }, [])
 
   const patch = (next: Partial<UserOnboardingData>) => setData((prev) => ({ ...prev, ...next }))
-
-  const handleDirectStart = () => {
-    saveDemoProfile(data.status as DemoStatus, data.level as DemoItLevel)
-    navigate('/mentors', { replace: true })
-  }
 
   const handleFinalSubmit = async (values: { fullName: string; email: string; password: string }) => {
     try {
@@ -83,19 +68,12 @@ export default function UserSignupPage({ flow = 'assessment' }: UserSignupPagePr
   }
 
   return (
-    <OnboardingLayout steps={steps} currentStepIndex={stepIndex} wide={isDirectFlow ? stepIndex === 0 : stepIndex < 2}>
-      {stepIndex === 0 && (
-        <GoalStep
-          data={data}
-          onChange={patch}
-          onNext={isDirectFlow ? handleDirectStart : () => setStepIndex(1)}
-          direct={isDirectFlow}
-        />
-      )}
-      {!isDirectFlow && stepIndex === 1 && (
+    <OnboardingLayout steps={steps} currentStepIndex={stepIndex} wide={stepIndex < 2}>
+      {stepIndex === 0 && <GoalStep data={data} onChange={patch} onNext={() => setStepIndex(1)} />}
+      {stepIndex === 1 && (
         <InterestsStep data={data} onChange={patch} onNext={() => setStepIndex(2)} onBack={() => setStepIndex(0)} />
       )}
-      {!isDirectFlow && stepIndex === 2 && (
+      {stepIndex === 2 && (
         <AboutAuthStep
           onSubmit={handleFinalSubmit}
           onGoogleSubmit={handleGoogleSubmit}

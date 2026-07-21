@@ -30,14 +30,18 @@ export function Navbar() {
 
         <nav className="hidden items-center gap-8 lg:flex">
           {marketingNavLinks.map((link) => (
-            <a key={link.href} href={link.href} className="text-sm font-medium text-ink-600 transition-colors hover:text-ink-900">
+            <a
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-ink-600 transition-colors hover:text-ink-900"
+            >
               {link.label}
             </a>
           ))}
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link to="/mentor/signup" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+          <Link to="/mentor/apply" className="text-sm font-medium text-primary-600 hover:text-primary-700">
             Mentor kimi qoşul
           </Link>
           <Button asChild variant="outline">
@@ -81,7 +85,7 @@ export function Navbar() {
               </Button>
             </SheetClose>
             <SheetClose asChild>
-              <Link to="/mentor/signup" className="text-center text-sm font-medium text-primary-600">
+              <Link to="/mentor/apply" className="text-center text-sm font-medium text-primary-600">
                 Mentor kimi qoşul
               </Link>
             </SheetClose>

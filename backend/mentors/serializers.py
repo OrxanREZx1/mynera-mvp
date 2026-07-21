@@ -3,7 +3,13 @@ from rest_framework import serializers
 
 from career.models import UserAssessment
 
-from .models import Mentor, MentorRequest, MentorWtpOption, Review
+from .models import (
+    Mentor,
+    MentorApplication,
+    MentorRequest,
+    MentorWtpOption,
+    Review,
+)
 
 
 class MentorSerializer(serializers.ModelSerializer):
@@ -110,6 +116,77 @@ class ReviewSerializer(serializers.ModelSerializer):
             "comment",
         ]
         read_only_fields = fields
+
+
+class MentorApplicationSerializer(serializers.ModelSerializer):
+    """Application contract; review status can only be changed in Django admin."""
+
+    id = serializers.CharField(read_only=True)
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    fullName = serializers.CharField(source="user.full_name", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    professionalField = serializers.CharField(source="professional_field")
+    experienceYears = serializers.IntegerField(source="experience_years")
+    targetMenteeTypes = serializers.ListField(
+        source="target_mentee_types",
+        child=serializers.CharField(max_length=100, trim_whitespace=True),
+        allow_empty=False,
+    )
+    offeredServices = serializers.ListField(
+        source="offered_services",
+        child=serializers.CharField(max_length=100, trim_whitespace=True),
+        allow_empty=False,
+    )
+    sessionTypes = serializers.ListField(
+        source="session_types",
+        child=serializers.CharField(max_length=100, trim_whitespace=True),
+        allow_empty=False,
+    )
+    paymentPreference = serializers.CharField(source="payment_preference")
+    submittedAt = serializers.DateTimeField(source="submitted_at", read_only=True)
+    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
+    skills = serializers.ListField(
+        child=serializers.CharField(max_length=100, trim_whitespace=True),
+        allow_empty=False,
+    )
+
+    class Meta:
+        model = MentorApplication
+        fields = [
+            "id",
+            "user",
+            "fullName",
+            "email",
+            "avatar",
+            "professionalField",
+            "seniority",
+            "experienceYears",
+            "skills",
+            "linkedin",
+            "country",
+            "motivation",
+            "targetMenteeTypes",
+            "offeredServices",
+            "sessionTypes",
+            "paymentPreference",
+            "status",
+            "submittedAt",
+            "updatedAt",
+        ]
+        read_only_fields = ["id", "status", "submittedAt", "updatedAt"]
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        user = attrs.get("user") or getattr(request, "user", None)
+        if (
+            self.instance is None
+            and user is not None
+            and MentorApplication.objects.filter(user=user).exists()
+        ):
+            raise serializers.ValidationError(
+                {"detail": "You have already submitted a mentor application."}
+            )
+        return attrs
 
 
 class MentorRequestSerializer(serializers.ModelSerializer):

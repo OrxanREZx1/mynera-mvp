@@ -1,4 +1,4 @@
-import type { AuthUser, ChatMessage, Mentor, MentorCategory, Roadmap } from '@/types'
+import type { AuthUser, ChatMessage, Mentor, MentorCategory, Roadmap, UserRole } from '@/types'
 import { apiClient, ACCESS_TOKEN_KEY, AUTH_REQUEST_TIMEOUT_MS, REFRESH_TOKEN_KEY } from './client'
 import { getSessionId } from '@/utils/session'
 import {
@@ -45,6 +45,7 @@ interface BackendUser {
   avatar_url: string
   status: string
   it_level: string
+  role: UserRole
   date_joined: string
 }
 
@@ -66,9 +67,7 @@ function toAuthUser(user: BackendUser): AuthUser {
     fullName: user.full_name,
     email: user.email,
     avatarUrl: user.avatar_url || undefined,
-    // The backend has no mentor-account concept yet (Mentor is a static
-    // profile, not a login) — every registered user is a 'student' here.
-    role: 'student',
+    role: user.role,
     isPremium: false,
     planId: 'starter',
   }
@@ -368,10 +367,9 @@ export const mentorDashboardApi = {
 }
 
 // --- Aira AI assistant (real) -----------------------------------------------
-// Backed by backend/aira using the backend-configured OpenAI model. Requires the user to be
-// logged in (JWT) and OPENAI_API_KEY to be set in the backend's .env —
-// see backend/aira/services.py. Unlike the mock APIs above, sendMessage and
-// generateRoadmap talk to the real model; nothing here is scripted/fake.
+// Backed by backend/aira using the backend-configured OpenAI model. Authenticated
+// chat uses JWT; the guest diagnostic uses the anonymous X-Session-Id. Both call
+// the real backend/model and use the longer AI timeout for Render cold starts.
 
 interface BackendChatMessage {
   id: number
@@ -385,13 +383,41 @@ interface ChatReplyResponse {
   message: BackendChatMessage
 }
 
+export type GuestDiagnosticStep = 'status' | 'it_level' | 'goal' | 'complete'
+
+interface BackendGuestDiagnosticResponse {
+  step: GuestDiagnosticStep
+  messages?: BackendChatMessage[]
+  reply?: string
+  message?: BackendChatMessage
+  roadmap: BackendRoadmapPlan | null
+}
+
+export interface GuestDiagnosticState {
+  step: GuestDiagnosticStep
+  messages: ChatMessage[]
+  message?: ChatMessage
+  roadmap: Roadmap | null
+}
+
 function toChatMessage(message: BackendChatMessage): ChatMessage {
   return { ...message, id: String(message.id) }
 }
 
+function toGuestDiagnosticState(response: BackendGuestDiagnosticResponse): GuestDiagnosticState {
+  return {
+    step: response.step,
+    messages: (response.messages ?? []).map(toChatMessage),
+    message: response.message ? toChatMessage(response.message) : undefined,
+    roadmap: response.roadmap ? toRoadmap(response.roadmap) : null,
+  }
+}
+
 export const chatApi = {
   async history(): Promise<ChatMessage[]> {
-    const { data } = await apiClient.get<BackendChatMessage[]>('/aira/chat/')
+    const { data } = await apiClient.get<BackendChatMessage[]>('/aira/chat/', {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    })
     return data.map(toChatMessage)
   },
 
@@ -401,11 +427,31 @@ export const chatApi = {
       content: message.content,
     }))
 
-    const { data } = await apiClient.post<ChatReplyResponse>('/aira/chat/', {
-      message: content,
-      history,
-    })
+    const { data } = await apiClient.post<ChatReplyResponse>(
+      '/aira/chat/',
+      {
+        message: content,
+        history,
+      },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS }
+    )
     return toChatMessage(data.message)
+  },
+
+  async guestState(): Promise<GuestDiagnosticState> {
+    const { data } = await apiClient.get<BackendGuestDiagnosticResponse>('/aira/guest-onboarding/', {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    })
+    return toGuestDiagnosticState(data)
+  },
+
+  async answerGuestDiagnostic(content: string): Promise<GuestDiagnosticState> {
+    const { data } = await apiClient.post<BackendGuestDiagnosticResponse>(
+      '/aira/guest-onboarding/',
+      { message: content },
+      { timeout: AUTH_REQUEST_TIMEOUT_MS }
+    )
+    return toGuestDiagnosticState(data)
   },
 }
 
@@ -429,7 +475,25 @@ function toRoadmap(plan: BackendRoadmapPlan): Roadmap {
 export const airaApi = {
   /** Generates and persists a brand-new personal roadmap from the 5 guided-chat answers. */
   async generateRoadmap(answers: AiraRoadmapAnswers): Promise<Roadmap> {
-    const { data } = await apiClient.post<BackendRoadmapPlan>('/aira/generate-roadmap/', answers)
+    const { data } = await apiClient.post<BackendRoadmapPlan>('/aira/generate-roadmap/', answers, {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    })
+    return toRoadmap(data)
+  },
+
+  async guestRoadmap(): Promise<Roadmap> {
+    const { data } = await apiClient.get<BackendRoadmapPlan>('/aira/guest-roadmap/', {
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
+    })
+    return toRoadmap(data)
+  },
+
+  async toggleGuestLesson(lessonId: string): Promise<Roadmap> {
+    const { data } = await apiClient.post<BackendRoadmapPlan>(
+      `/aira/guest-roadmap/lessons/${lessonId}/toggle/`,
+      undefined,
+      { timeout: AUTH_REQUEST_TIMEOUT_MS }
+    )
     return toRoadmap(data)
   },
 }

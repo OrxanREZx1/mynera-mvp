@@ -26,15 +26,17 @@ export function AppSidebar({ links, onNavigate }: AppSidebarProps) {
     <div className="flex h-full flex-col gap-6 p-5">
       <div className="flex items-center justify-between px-1">
         <Logo />
-        <RouterNavLink
-          to="/notifications"
-          onClick={onNavigate}
-          className="relative flex size-9 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800"
-          aria-label="Bildirişlər"
-        >
-          <Bell className="size-4.5" />
-          <span className="absolute right-2 top-2 size-1.5 rounded-full bg-danger-500" />
-        </RouterNavLink>
+        {user && (
+          <RouterNavLink
+            to="/notifications"
+            onClick={onNavigate}
+            className="relative flex size-9 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800"
+            aria-label="Bildirişlər"
+          >
+            <Bell className="size-4.5" />
+            <span className="absolute right-2 top-2 size-1.5 rounded-full bg-danger-500" />
+          </RouterNavLink>
+        )}
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">
@@ -84,7 +86,7 @@ export function AppSidebar({ links, onNavigate }: AppSidebarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => logout()}
-              className="text-danger-600 focus:bg-danger-50 focus:text-danger-700"
+              className="focus:text-danger-700 text-danger-600 focus:bg-danger-50"
             >
               <LogOut className="size-4" />
               Hesabdan çıx

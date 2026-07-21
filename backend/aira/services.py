@@ -4,7 +4,7 @@ naxışı izləyir (OpenAI çağırışı, JSON validasiyası, mərkəzləşdiri
 
 İki funksiya:
 - chat_reply(): sərbəst söhbət üçün adi mətn cavabı.
-- generate_roadmap(): 5 giriş sualının cavabına əsasən strukturlaşdırılmış
+- generate_roadmap(): diaqnostik cavablara əsasən strukturlaşdırılmış
   roadmap (modullar + dərslər) qurur.
 """
 import json
@@ -31,19 +31,26 @@ OPENAI_FALLBACK_MODELS = settings.OPENAI_FALLBACK_MODELS
 _MODEL_CANDIDATES = list(dict.fromkeys([OPENAI_MODEL, *OPENAI_FALLBACK_MODELS]))
 
 AIRA_CHAT_SYSTEM_PROMPT = """\
-Sən "Aira" adlı, Yolum IT platformasının IT karyera üzrə AI köməkçisisən.
-İstifadəçilərə IT sahəsində karyera seçimi, öyrənmə planı və texniki suallarda
-kömək edirsən. Tonun səmimi, konkret və həvəsləndiricidir.
-HƏMİŞƏ Azərbaycan dilində cavab ver, hətta istifadəçi başqa dildə yazsa belə
-nəzakətlə azərbaycanca davam et. Cavablarını qısa və praktik saxla (adətən
-2-5 cümlə), lazım olduqda maddə işarələrindən istifadə et.
+Sən Mynera platformasının Senior Principal Mentor və istifadəçinin sağ əlisən.
+Həmişə qısa, lakin əhatəli və peşəkar cavablar ver. Oxunaqlılığı artırmaq üçün
+siyahılardan (bullet points) istifadə et.
+
+ƏN VACİB QAYDA: Əgər istifadəçi karyera məsləhəti və ya yol xəritəsi istəyirsə
+və sən onun kim olduğunu bilmirsənsə, dərhal məsləhət VERMƏ. Əvəzində ardıcıl
+olaraq bu 3 sualı ver (hər mesajda yalnız birini soruş):
+1. Hazırkı vəziyyətiniz (Tələbəyəm, İşləyirəm, İşsizəm)?
+2. İT səviyyəniz (Senior, Middle, Junior, Təcrübəsiz)?
+3. Məqsədiniz nədir?
+
+İstifadəçi bu 3 suala cavab verdikdən sonra ona detallı bir plan/yol xəritəsi
+təqdim et.
 """
 
 ROADMAP_SYSTEM_PROMPT = """\
-Sən "Aira" adlı Senior Tech Career Counselor-san. İstifadəçi ilə apardığın
-qısa müsahibədən (founder/background, ideya, fərqləndirici tərəf, hədəf
-auditoriya, mövcud resurslar) əldə etdiyin cavablara əsasən ona FƏRDİ bir
-IT öyrənmə roadmap-ı qurmalısan.
+Sən "Aira" adlı Senior Tech Career Counselor-san. İstifadəçinin hazırkı
+vəziyyəti, İT səviyyəsi və məqsədi daxil olmaqla təqdim edilən diaqnostik
+cavablara əsasən ona FƏRDİ bir IT öyrənmə roadmap-ı qurmalısan. Sahəni heç
+vaxt əvvəlcədən fərz etmə; istiqaməti yalnız cavablardan çıxar.
 
 Cavabı YALNIZ aşağıdakı JSON strukturunda qaytar (başqa mətn, izah və ya
 markdown blok işarəsi yazma):
@@ -60,7 +67,11 @@ markdown blok işarəsi yazma):
 }
 
 Qaydalar:
-- Tam olaraq 6-8 modul yarat, hər modulda 3-5 dərs olsun.
+- Tam olaraq 4 və ya 5 modul yarat; 4-dən az və 5-dən çox modul yaratma.
+- Hər modulda tam olaraq 4 və ya 5 dərs yarat; 4-dən az və 5-dən çox dərs
+  yaratma.
+- Dərs başlıqları yüksək peşəkarlıq səviyyəsində, konkret və müasir İT
+  terminologiyasına uyğun olsun; generik başlıqlardan istifadə etmə.
 - Modullar başlanğıcdan irəliyə doğru məntiqli sıra ilə getsin (əsaslardan
   layihə qurmağa qədər).
 - Bütün mətnləri Azərbaycan dilində yaz.
@@ -98,17 +109,79 @@ def chat_reply(history: list[dict]) -> str:
     return content
 
 
+def _validated_roadmap_payload(data) -> dict:
+    """Validate and normalize the untrusted JSON returned by the AI model."""
+
+    if not isinstance(data, dict):
+        raise AIServiceError("AI roadmap cavabı düzgün obyekt deyil.")
+
+    modules_in = data.get("modules")
+    if not isinstance(modules_in, list) or len(modules_in) not in (4, 5):
+        raise AIServiceError("AI roadmap-ı 4 və ya 5 moduldan ibarət olmalıdır.")
+
+    modules = []
+    for m_idx, module in enumerate(modules_in, start=1):
+        if not isinstance(module, dict):
+            raise AIServiceError(f"Roadmap-ın {m_idx}-ci modulu düzgün formatda deyil.")
+
+        module_title = module.get("title")
+        duration = module.get("duration")
+        lessons_in = module.get("lessons")
+        if not isinstance(module_title, str) or not module_title.strip():
+            raise AIServiceError(f"Roadmap-ın {m_idx}-ci modul başlığı boşdur.")
+        if not isinstance(duration, str) or not duration.strip():
+            raise AIServiceError(f"Roadmap-ın {m_idx}-ci modul müddəti boşdur.")
+        if not isinstance(lessons_in, list) or len(lessons_in) not in (4, 5):
+            raise AIServiceError(
+                f"Roadmap-ın {m_idx}-ci modulu 4 və ya 5 dərsdən ibarət olmalıdır."
+            )
+        if not all(isinstance(title, str) and title.strip() for title in lessons_in):
+            raise AIServiceError(f"Roadmap-ın {m_idx}-ci modulunda boş dərs başlığı var.")
+
+        lessons = [
+            {
+                "id": f"m{m_idx}-l{l_idx}",
+                "title": lesson_title.strip(),
+                "completed": False,
+                "locked": False,
+            }
+            for l_idx, lesson_title in enumerate(lessons_in, start=1)
+        ]
+        modules.append(
+            {
+                "id": f"m{m_idx}",
+                "index": m_idx,
+                "title": module_title.strip(),
+                "duration": duration.strip(),
+                "lessons": lessons,
+            }
+        )
+
+    title = data.get("title")
+    recommended_field = data.get("recommended_field")
+    if not isinstance(title, str) or not title.strip():
+        raise AIServiceError("AI roadmap başlığı qaytarmadı.")
+    if not isinstance(recommended_field, str) or not recommended_field.strip():
+        raise AIServiceError("AI tövsiyə olunan İT sahəsini qaytarmadı.")
+
+    return {
+        "title": title.strip(),
+        "recommended_field": recommended_field.strip(),
+        "modules": modules,
+    }
+
+
 def generate_roadmap(answers: dict) -> dict:
     """
-    answers = {"founder": "...", "idea": "...", "differentiation": "...",
-               "target": "...", "resources": "..."}
+    answers = istifadəçinin status, İT səviyyəsi və məqsədi kimi diaqnostik
+    cavablarını saxlayan dictionary.
     Qaytarır: {"title", "recommended_field", "modules": [...]}
     """
     if not answers or not any((v or "").strip() for v in answers.values()):
         raise AIServiceError("Roadmap qurmaq üçün kifayət qədər məlumat yoxdur.")
 
     client = _client()
-    user_payload = "İstifadəçi ilə aparılan müsahibənin cavabları:\n" + json.dumps(
+    user_payload = "İstifadəçinin diaqnostik cavabları:\n" + json.dumps(
         answers, ensure_ascii=False, indent=2
     )
     try:
@@ -135,34 +208,4 @@ def generate_roadmap(answers: dict) -> dict:
         logger.error("Aira roadmap cavabı JSON deyil: %s", content[:300])
         raise AIServiceError("AI cavabını JSON kimi oxumaq mümkün olmadı.") from exc
 
-    modules_in = data.get("modules") or []
-    if not modules_in:
-        raise AIServiceError("AI heç bir modul qaytarmadı.")
-
-    modules = []
-    for m_idx, module in enumerate(modules_in, start=1):
-        lessons_in = (module or {}).get("lessons") or []
-        lessons = [
-            {
-                "id": f"m{m_idx}-l{l_idx}",
-                "title": str(lesson_title),
-                "completed": False,
-                "locked": False,
-            }
-            for l_idx, lesson_title in enumerate(lessons_in, start=1)
-        ]
-        modules.append(
-            {
-                "id": f"m{m_idx}",
-                "index": m_idx,
-                "title": str((module or {}).get("title", f"Modul {m_idx}")),
-                "duration": str((module or {}).get("duration", "")),
-                "lessons": lessons,
-            }
-        )
-
-    return {
-        "title": str(data.get("title") or "Sənin fərdi roadmap-ın"),
-        "recommended_field": str(data.get("recommended_field") or ""),
-        "modules": modules,
-    }
+    return _validated_roadmap_payload(data)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, Bot, Send, Sparkles } from 'lucide-react'
+import { AlertCircle, Bot, BrainCircuit, Compass, Gamepad2, GraduationCap, Send, Sparkles } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { ChatBubble, TypingIndicator } from '@/components/shared/ChatBubble'
 import type { ChatMessage } from '@/types'
 import { chatApi } from '@/services/api/endpoints'
@@ -10,21 +11,56 @@ function getApiError(error: unknown, fallback: string) {
   return detail || fallback
 }
 
-export default function ChatPage() {
+const CHAT_SUGGESTIONS = [
+  {
+    title: 'Maraqlarını Kəşf Et',
+    description: 'Sənə uyğun texnologiya yolunu tap',
+    icon: Compass,
+  },
+  {
+    title: 'Dərslərdə Dəstək Al',
+    description: 'Çətin mövzuları daha rahat öyrən',
+    icon: GraduationCap,
+  },
+  {
+    title: 'Bacarıqlarını İnkişaf Etdir',
+    description: 'Yeni sahələr kəşf et və inkişaf et',
+    icon: BrainCircuit,
+  },
+  {
+    title: 'Öyrənərək Əylən',
+    description: 'Tapşırıqlar və oyunlarla praktika et',
+    icon: Gamepad2,
+  },
+] as const
+
+interface ChatPageProps {
+  guestMode?: boolean
+}
+
+export default function ChatPage({ guestMode = false }: ChatPageProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [draft, setDraft] = useState('')
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [guestRoadmapReady, setGuestRoadmapReady] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let active = true
 
-    chatApi
-      .history()
+    const historyRequest = guestMode ? chatApi.guestState() : chatApi.history()
+
+    historyRequest
       .then((history) => {
-        if (active) setMessages(history)
+        if (!active) return
+        if (Array.isArray(history)) {
+          setMessages(history)
+        } else {
+          setMessages(history.messages)
+          setGuestRoadmapReady(Boolean(history.roadmap))
+        }
       })
       .catch((requestError: unknown) => {
         if (active) {
@@ -38,16 +74,15 @@ export default function ChatPage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [guestMode])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isSending])
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    const content = draft.trim()
-    if (!content || isSending) return
+  const sendMessage = async (rawContent: string) => {
+    const content = rawContent.trim()
+    if (!content || isLoadingHistory || isSending) return
 
     const history = messages
     const userMessage: ChatMessage = {
@@ -58,29 +93,41 @@ export default function ChatPage() {
       pending: true,
     }
 
-    setDraft('')
     setError(null)
     setIsSending(true)
     setMessages((current) => [...current, userMessage])
 
     try {
-      const assistantMessage = await chatApi.sendMessage(content, history)
+      let assistantMessage: ChatMessage
+      if (guestMode) {
+        const guestResponse = await chatApi.answerGuestDiagnostic(content)
+        if (!guestResponse.message) throw new Error('Guest onboarding response did not include a message')
+        assistantMessage = guestResponse.message
+        if (guestResponse.roadmap) setGuestRoadmapReady(true)
+      } else {
+        assistantMessage = await chatApi.sendMessage(content, history)
+      }
       setMessages((current) => [
-        ...current.map((message) =>
-          message.id === userMessage.id ? { ...message, pending: false } : message
-        ),
+        ...current.map((message) => (message.id === userMessage.id ? { ...message, pending: false } : message)),
         assistantMessage,
       ])
     } catch (requestError) {
       setMessages((current) =>
-        current.map((message) =>
-          message.id === userMessage.id ? { ...message, pending: false } : message
-        )
+        current.map((message) => (message.id === userMessage.id ? { ...message, pending: false } : message))
       )
       setError(getApiError(requestError, 'Aira cavab verə bilmədi. Bir az sonra yenidən cəhd et.'))
     } finally {
       setIsSending(false)
     }
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    const content = draft.trim()
+    if (!content || isLoadingHistory || isSending) return
+
+    setDraft('')
+    await sendMessage(content)
   }
 
   return (
@@ -92,7 +139,9 @@ export default function ChatPage() {
           </div>
           <div>
             <h1 className="font-semibold text-ink-900">Aira</h1>
-            <p className="text-xs text-ink-500">AI karyera köməkçisi</p>
+            <p className="text-xs text-ink-500">
+              {guestMode ? 'Qeydiyyatsız fərdi diaqnostika' : 'AI karyera köməkçisi'}
+            </p>
           </div>
         </div>
       </header>
@@ -105,14 +154,41 @@ export default function ChatPage() {
               Söhbət tarixçəsi yüklənir...
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
               <div className="flex size-14 items-center justify-center rounded-full bg-primary-100 text-primary-600">
                 <Sparkles className="size-6" />
               </div>
-              <h2 className="mt-4 text-xl font-semibold text-ink-900">Aira ilə söhbətə başla</h2>
+              <h2 className="mt-4 text-xl font-semibold text-ink-900 sm:text-2xl">
+                Aira — texnologiya dünyasında AI bələdçiniz
+              </h2>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-500">
                 IT karyerası, öyrənmə planı və texniki istiqamət haqqında sualını yaz.
               </p>
+              <div className="mt-7 grid w-full max-w-2xl gap-3 text-left sm:grid-cols-2">
+                {CHAT_SUGGESTIONS.map((suggestion) => {
+                  const SuggestionIcon = suggestion.icon
+
+                  return (
+                    <button
+                      key={suggestion.title}
+                      type="button"
+                      onClick={() => void sendMessage(suggestion.title)}
+                      disabled={isSending}
+                      className="group flex items-start gap-3 rounded-xl border border-ink-100 bg-white p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 transition-colors group-hover:bg-primary-100">
+                        <SuggestionIcon className="size-5" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold text-ink-900">{suggestion.title}</span>
+                        <span className="mt-1 block text-xs leading-relaxed text-ink-500">
+                          {suggestion.description}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-5">
@@ -124,9 +200,25 @@ export default function ChatPage() {
           )}
 
           {error && (
-            <div className="mt-4 flex items-start gap-2 rounded-xl border border-danger-100 bg-danger-50 px-4 py-3 text-sm text-danger-700">
+            <div className="border-danger-100 text-danger-700 mt-4 flex items-start gap-2 rounded-xl border bg-danger-50 px-4 py-3 text-sm">
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
               {error}
+            </div>
+          )}
+          {guestMode && guestRoadmapReady && (
+            <div className="mt-5 flex flex-col items-start justify-between gap-3 rounded-xl border border-primary-200 bg-primary-50 p-4 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-sm font-semibold text-ink-900">Fərdi yol xəritəniz hazırdır</p>
+                <p className="mt-1 text-xs text-ink-600">
+                  Cavablarınıza əsasən yaradılan modulları və dərsləri indi nəzərdən keçirin.
+                </p>
+              </div>
+              <Link
+                to="/demo/roadmap"
+                className="shrink-0 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+              >
+                Roadmap-a bax
+              </Link>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -146,7 +238,7 @@ export default function ChatPage() {
             }}
             disabled={isLoadingHistory || isSending}
             rows={2}
-            placeholder="Aira-ya sualını yaz..."
+            placeholder={guestMode ? 'Cavabınızı yazın...' : 'Aira-ya sualını yaz...'}
             aria-label="Aira-ya mesaj"
             className="max-h-36 min-h-12 flex-1 resize-none rounded-2xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-800 placeholder:text-ink-400 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:cursor-not-allowed disabled:opacity-60"
           />

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BrainCircuit, Check, ChevronDown, Flame, Lock, MessageCircleMore, Route, Sparkles, Users } from 'lucide-react'
-import { lmsApi } from '@/services/api/endpoints'
+import { airaApi, lmsApi } from '@/services/api/endpoints'
+import { ACCESS_TOKEN_KEY } from '@/services/api/client'
 import type { Roadmap } from '@/types'
+import { useAuth } from '@/context/AuthContext'
 import { CircularProgress } from '@/components/shared/CircularProgress'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -62,7 +64,9 @@ function ModuleRow({
                 {lesson.completed && <Check className="size-3.5" />}
                 {lesson.locked && <Lock className="size-3" />}
               </span>
-              <span className={cn('flex-1 text-sm', lesson.locked ? 'text-ink-400' : 'text-ink-700')}>{lesson.title}</span>
+              <span className={cn('flex-1 text-sm', lesson.locked ? 'text-ink-400' : 'text-ink-700')}>
+                {lesson.title}
+              </span>
             </button>
           ))}
         </div>
@@ -71,15 +75,28 @@ function ModuleRow({
   )
 }
 
-export default function RoadmapPage() {
+interface RoadmapPageProps {
+  guestMode?: boolean
+}
+
+export default function RoadmapPage({ guestMode = false }: RoadmapPageProps) {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandAll, setExpandAll] = useState(false)
+  const hasAccessToken = isAuthenticated && Boolean(localStorage.getItem(ACCESS_TOKEN_KEY))
 
   useEffect(() => {
+    // Protected routes can render during an auth transition (for example,
+    // immediately after Google login). Do not race the token persistence and
+    // send an unauthenticated LMS request that produces a misleading 401.
+    if (!guestMode && (isAuthLoading || !isAuthenticated || !hasAccessToken)) return
+
     let cancelled = false
-    lmsApi
-      .myRoadmap()
+
+    const roadmapRequest = guestMode ? airaApi.guestRoadmap() : lmsApi.myRoadmap()
+
+    roadmapRequest
       .then((data) => {
         if (!cancelled) setRoadmap(data)
       })
@@ -94,7 +111,7 @@ export default function RoadmapPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [guestMode, hasAccessToken, isAuthenticated, isAuthLoading])
 
   const handleToggleLesson = async (lessonId: string) => {
     if (!roadmap) return
@@ -108,7 +125,7 @@ export default function RoadmapPage() {
     }
     setRoadmap(optimistic)
     try {
-      const updated = await lmsApi.toggleLesson(lessonId)
+      const updated = guestMode ? await airaApi.toggleGuestLesson(lessonId) : await lmsApi.toggleLesson(lessonId)
       setRoadmap(updated)
     } catch {
       setRoadmap(roadmap) // revert on failure
@@ -135,11 +152,11 @@ export default function RoadmapPage() {
         </span>
         <h1 className="text-xl font-semibold text-ink-900">Hələ heç bir roadmap-ın yoxdur</h1>
         <p className="max-w-sm text-sm text-ink-500">
-          Fərdi öyrənmə yol xəritəni yaratmaq üçün əvvəlcə Aira ilə qısa söhbət et — sənin cavablarına əsasən
-          sənə uyğun roadmap qurulacaq.
+          Fərdi öyrənmə yol xəritəni yaratmaq üçün əvvəlcə Aira ilə qısa söhbət et — sənin cavablarına əsasən sənə uyğun
+          roadmap qurulacaq.
         </p>
         <Button asChild>
-          <Link to="/chat">
+          <Link to={guestMode ? '/demo' : '/chat'}>
             <MessageCircleMore className="size-4" /> Aira ilə başla
           </Link>
         </Button>
@@ -201,7 +218,8 @@ export default function RoadmapPage() {
           <div className="flex flex-col justify-center gap-2 rounded-lg border border-dashed border-ink-200 bg-ink-50/40 p-5 text-center">
             <p className="text-sm font-medium text-ink-600">Gündəlik izləmə tezliklə</p>
             <p className="text-xs text-ink-400">
-              Günlük seriya və öyrənmə vaxtı izləmə funksiyası hazırlanır — hələlik yalnız dərs tamamlanma faizi izlənilir.
+              Günlük seriya və öyrənmə vaxtı izləmə funksiyası hazırlanır — hələlik yalnız dərs tamamlanma faizi
+              izlənilir.
             </p>
           </div>
         )}
@@ -238,7 +256,7 @@ export default function RoadmapPage() {
             Maraq və hədəflərinə uyğun fərqli sahələr üzrə yeni yol xəritələri yarat və inkişaf planını yenilə.
           </p>
           <Button asChild variant="outline" size="sm">
-            <Link to="/signup">Yol xəritəni dəyiş</Link>
+            <Link to={guestMode ? '/demo' : '/signup'}>Yol xəritəni dəyiş</Link>
           </Button>
         </div>
         <div className="flex flex-col gap-3 rounded-lg border border-ink-100 bg-white p-5 shadow-card">
@@ -248,7 +266,7 @@ export default function RoadmapPage() {
             Öyrənmə planınla bağlı dəyişiklikləri, məqsədlərini və suallarını AI assistant ilə müzakirə et.
           </p>
           <Button asChild variant="outline" size="sm">
-            <Link to="/chat">
+            <Link to={guestMode ? '/demo' : '/chat'}>
               <MessageCircleMore className="size-4" /> AI ilə məsləhətləş
             </Link>
           </Button>
@@ -257,7 +275,7 @@ export default function RoadmapPage() {
           <Users className="size-5 text-primary-500" />
           <h4 className="text-sm font-semibold text-ink-900">Fərdi mentorluq alın</h4>
           <p className="flex-1 text-xs text-ink-500">
-            Süni intellekt və maşın öyrənməsi üzrə mütəxəssislə sessiyaya qoşulun.
+            {roadmap.recommended_field || roadmap.title} istiqaməti üzrə uyğun mütəxəssislə sessiyaya qoşulun.
           </p>
           <Button asChild variant="outline" size="sm">
             <Link to="/mentors">Mentorlara bax</Link>

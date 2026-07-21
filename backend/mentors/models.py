@@ -128,6 +128,68 @@ class Review(models.Model):
         return f"{self.mentor} · {self.rating}/5 · {self.author_name}"
 
 
+class MentorApplication(models.Model):
+    """An authenticated user's application to join the mentor marketplace."""
+
+    class Status(models.TextChoices):
+        SUBMITTED = "submitted", "Submitted"
+        UNDER_REVIEW = "under_review", "Under review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="mentor_application",
+    )
+    avatar = models.URLField(max_length=500, blank=True, default="")
+    professional_field = models.CharField(max_length=150)
+    seniority = models.CharField(max_length=50)
+    experience_years = models.PositiveSmallIntegerField(
+        validators=[MaxValueValidator(60)]
+    )
+    skills = models.JSONField(default=list)
+    linkedin = models.URLField(max_length=500)
+    country = models.CharField(max_length=100)
+    motivation = models.TextField()
+    target_mentee_types = models.JSONField(default=list)
+    offered_services = models.JSONField(default=list)
+    session_types = models.JSONField(default=list)
+    payment_preference = models.CharField(max_length=100)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.SUBMITTED,
+        db_index=True,
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-submitted_at"]
+        verbose_name = "Mentor application"
+        verbose_name_plural = "Mentor applications"
+
+    def __str__(self):
+        return f"{self.user.email} · {self.get_status_display()}"
+
+    def clean(self):
+        errors = {}
+        for field_name in (
+            "skills",
+            "target_mentee_types",
+            "offered_services",
+            "session_types",
+        ):
+            value = getattr(self, field_name)
+            if not isinstance(value, list) or not value or not all(
+                isinstance(item, str) and item.strip() for item in value
+            ):
+                errors[field_name] = "A non-empty list of text values is required."
+        if errors:
+            raise ValidationError(errors)
+
+
 class MentorWtpOption(models.TextChoices):
     """Sprint sənədindəki mentor ödəniş seçimləri (bölmə 10)."""
 

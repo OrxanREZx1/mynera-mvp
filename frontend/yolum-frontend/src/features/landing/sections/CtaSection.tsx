@@ -22,7 +22,7 @@ export function CtaSection() {
             Aira ilə tanış ol, maraqlarını kəşf et və 5 dəqiqəyə fərdi roadmap-ını əldə et — tamamilə pulsuz.
           </p>
           <Button asChild size="lg">
-            <Link to="/signup">
+            <Link to="/demo">
               Pulsuz başla <ArrowRight className="size-4" />
             </Link>
           </Button>

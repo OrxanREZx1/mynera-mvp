@@ -1,5 +1,6 @@
 from django.db.models import Avg, Count
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -7,8 +8,12 @@ from rest_framework.throttling import ScopedRateThrottle
 from analytics.events import EventName
 from analytics.services import track_event
 
-from .models import Mentor, MentorRequest
-from .serializers import MentorRequestSerializer, MentorSerializer
+from .models import Mentor, MentorApplication, MentorRequest
+from .serializers import (
+    MentorApplicationSerializer,
+    MentorRequestSerializer,
+    MentorSerializer,
+)
 
 
 def marketplace_mentor_queryset():
@@ -97,3 +102,28 @@ class MyMentorRequestsView(generics.ListAPIView):
         return MentorRequest.objects.filter(user=self.request.user).select_related(
             "mentor"
         )
+
+
+class MentorApplicationViewSet(viewsets.ModelViewSet):
+    """Submit and inspect the signed-in user's mentor application."""
+
+    serializer_class = MentorApplicationSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_queryset(self):
+        # Application moderation is deliberately kept in Django admin. The API
+        # never exposes another applicant's personal data.
+        return MentorApplication.objects.filter(user=self.request.user).select_related(
+            "user"
+        )
+
+    @action(detail=False, methods=["get"], url_path="me")
+    def me(self, request):
+        application = self.get_queryset().first()
+        if application is None:
+            return Response(
+                {"detail": "Mentor application not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(self.get_serializer(application).data)

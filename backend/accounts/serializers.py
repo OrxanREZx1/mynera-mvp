@@ -11,6 +11,8 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     """Profil göstərmək/yeniləmək üçün — GET/PATCH /api/auth/me/."""
 
+    role = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -22,9 +24,18 @@ class UserSerializer(serializers.ModelSerializer):
             "avatar_url",
             "status",
             "it_level",
+            "role",
             "date_joined",
         ]
-        read_only_fields = ["id", "email", "date_joined"]
+        read_only_fields = ["id", "email", "role", "date_joined"]
+
+    def get_role(self, obj):
+        mentor_application = obj._meta.apps.get_model("mentors", "MentorApplication")
+        is_approved = mentor_application.objects.filter(
+            user_id=obj.pk,
+            status="approved",
+        ).exists()
+        return "mentor" if is_approved else "student"
 
 
 class RegisterSerializer(serializers.ModelSerializer):

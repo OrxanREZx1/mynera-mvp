@@ -1,85 +1,114 @@
-export interface MentorOnboardingData {
+export type MentorApplicationStatus = 'submitted' | 'under_review' | 'approved' | 'rejected'
+
+export interface MentorApplicationFormData {
+  avatar: string
   fullName: string
   email: string
-  password: string
-  avatarUrl: string
-  agree: boolean
-  field: string
-  position: string
-  experience: string
-  workplace: string
-  skills: string
-  country: string
+  professionalField: string
+  seniority: string
+  experienceYears: number
+  skills: string[]
   linkedin: string
-  github: string
+  country: string
   motivation: string
-  helpTypes: string[]
-  offerings: string[]
+  targetMenteeTypes: string[]
+  offeredServices: string[]
   sessionTypes: string[]
-  paymentTypes: string[]
-  introVideoDescription: string
+  paymentPreference: string
 }
 
-export const emptyMentorOnboardingData: MentorOnboardingData = {
+export interface MentorApplicationPayload {
+  avatar: string
+  professionalField: string
+  seniority: string
+  experienceYears: number
+  skills: string[]
+  linkedin: string
+  country: string
+  motivation: string
+  targetMenteeTypes: string[]
+  offeredServices: string[]
+  sessionTypes: string[]
+  paymentPreference: string
+}
+
+export interface MentorApplication extends MentorApplicationPayload {
+  id: string
+  fullName: string
+  email: string
+  status: MentorApplicationStatus
+  submittedAt: string
+  updatedAt: string
+}
+
+export const emptyMentorApplicationData: MentorApplicationFormData = {
+  avatar: '',
   fullName: '',
   email: '',
-  password: '',
-  avatarUrl: '',
-  agree: false,
-  field: '',
-  position: '',
-  experience: '',
-  workplace: '',
-  skills: '',
-  country: '',
+  professionalField: '',
+  seniority: '',
+  experienceYears: 0,
+  skills: [],
   linkedin: '',
-  github: '',
+  country: 'Azərbaycan',
   motivation: '',
-  helpTypes: [],
-  offerings: [],
+  targetMenteeTypes: [],
+  offeredServices: [],
   sessionTypes: [],
-  paymentTypes: [],
-  introVideoDescription: '',
+  paymentPreference: '',
 }
 
-export const positionOptions = [
-  'Frontend Developer',
-  'Backend Developer',
-  'Full-Stack Developer',
-  'UX/UI Designer',
-  'Graphic Designer',
-  'Data Analyst',
-  'AI/ML Engineer',
-  'DevOps Engineer',
-  'Product Manager',
-  'QA Engineer',
-  'Digər',
+export function toApplicationPayload(data: MentorApplicationFormData): MentorApplicationPayload {
+  return {
+    avatar: data.avatar.trim(),
+    professionalField: data.professionalField.trim(),
+    seniority: data.seniority,
+    experienceYears: data.experienceYears,
+    skills: data.skills,
+    linkedin: data.linkedin.trim(),
+    country: data.country,
+    motivation: data.motivation.trim(),
+    targetMenteeTypes: data.targetMenteeTypes,
+    offeredServices: data.offeredServices,
+    sessionTypes: data.sessionTypes,
+    paymentPreference: data.paymentPreference,
+  }
+}
+
+export const seniorityOptions = [
+  { value: 'junior', label: 'Junior' },
+  { value: 'middle', label: 'Middle' },
+  { value: 'senior', label: 'Senior' },
+  { value: 'lead', label: 'Lead / Principal' },
 ]
 
-export const countryOptions = ['Azərbaycan', 'Türkiyə', 'Gürcüstan', 'Rusiya', 'Almaniya', 'Digər']
+export const countryOptions = ['Azərbaycan', 'Türkiyə', 'Gürcüstan', 'Almaniya', 'Birləşmiş Krallıq', 'Digər']
 
-export const helpTypeOptions = [
+export const targetMenteeOptions = [
   { value: 'beginners', label: 'Yeni başlayanlar' },
-  { value: 'switchers', label: 'Sahə dəyişənlər' },
+  { value: 'students', label: 'Tələbələr' },
+  { value: 'career-switchers', label: 'Sahə dəyişənlər' },
+  { value: 'professionals', label: 'İnkişaf etmək istəyən mütəxəssislər' },
 ]
 
-export const offeringOptions = [
-  { value: 'career-guidance', label: 'Karyera yönləndirmə' },
+export const offeredServiceOptions = [
+  { value: 'career-guidance', label: 'Karyera yönləndirməsi' },
   { value: 'cv-review', label: 'CV yoxlanışı' },
   { value: 'portfolio-review', label: 'Portfolio yoxlanışı' },
   { value: 'interview-prep', label: 'Müsahibə hazırlığı' },
   { value: 'technical-mentoring', label: 'Texniki mentorluq' },
-  { value: 'project-support', label: 'Layihə üzrə dəstək' },
-  { value: 'freelance-advice', label: 'Freelance məsləhətləri' },
+  { value: 'project-support', label: 'Layihə dəstəyi' },
 ]
 
 export const sessionTypeOptions = [
-  { value: 'short', label: 'Qısa görüş (10–30 dəqiqə)' },
-  { value: 'standard', label: 'Standart görüş (30 dəqiqə – 2 saat)' },
-  { value: 'long', label: 'Uzunmüddətli mentorluq (1–3 həftə)' },
+  { value: 'one-to-one', label: 'Fərdi 1:1 sessiya' },
+  { value: 'group', label: 'Qrup sessiyası' },
+  { value: 'async', label: 'Asinxron yazılı dəstək' },
+  { value: 'long-term', label: 'Uzunmüddətli mentorluq' },
 ]
 
-export const paymentTypeOptions = [
-  { value: 'free', label: 'Ödənişsiz' },
-  { value: 'paid', label: 'Ödənişli' },
+export const paymentPreferenceOptions = [
+  { value: 'free', label: 'Ödənişsiz mentorluq' },
+  { value: 'paid', label: 'Ödənişli mentorluq' },
+  { value: 'both', label: 'Hər iki format' },
 ]

@@ -13,6 +13,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from analytics.events import EventName
 from analytics.models import Event
 from analytics.services import track_event
+from aira.models import ChatMessageLog, GuestDiagnosticSession, RoadmapPlan
 from career.models import UserAssessment
 from payments.models import WillingnessToPay
 
@@ -55,6 +56,13 @@ def _claim_anonymous_records(user, session_id):
         session_id=session_uuid, user__isnull=True
     ).update(user=user)
     Event.objects.filter(session_id=session_uuid, user__isnull=True).update(user=user)
+    ChatMessageLog.objects.filter(session_id=session_uuid, user__isnull=True).update(
+        user=user, session_id=None
+    )
+    RoadmapPlan.objects.filter(session_id=session_uuid, user__isnull=True).update(
+        user=user, session_id=None
+    )
+    GuestDiagnosticSession.objects.filter(session_id=session_uuid).delete()
     return claimed
 
 

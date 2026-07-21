@@ -35,6 +35,12 @@ export const studentAppNavLinks: NavLink[] = [
   { label: 'Bloq və Podcast', href: '/blog', icon: BookOpenText },
 ]
 
+export const guestAppNavLinks: NavLink[] = [
+  { label: 'Aira ilə söhbət', href: '/demo', icon: MessageSquare },
+  { label: 'Yol Xəritəsi', href: '/demo/roadmap', icon: Map },
+  { label: 'Mentorlar', href: '/mentors', icon: Users },
+]
+
 export const studentMobileMenuLinks: NavLink[] = [
   { label: 'Yol Xəritəsi', href: '/roadmap', icon: Map },
   { label: 'Bildirişlər', href: '/notifications', icon: Bell },

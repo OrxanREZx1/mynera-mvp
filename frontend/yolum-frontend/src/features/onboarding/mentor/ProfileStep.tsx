@@ -1,109 +1,104 @@
-import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Mail, Pencil, User } from 'lucide-react'
+import { Image, Mail, ShieldCheck, User } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import type { MentorOnboardingData } from './onboardingData'
+import type { MentorApplicationFormData } from './onboardingData'
 
-const schema = z.object({
-  fullName: z.string().min(2, 'Ad və soyadını daxil et'),
-  email: z.string().min(1, 'E-poçt ünvanını daxil et').email('Düzgün e-poçt ünvanı daxil et'),
-  password: z.string().min(8, 'Şifrə ən azı 8 simvol olmalıdır'),
-  agree: z.boolean().refine((v) => v === true, { message: 'Davam etmək üçün şərtləri qəbul et' }),
+function isOptionalHttpsUrl(value: string): boolean {
+  if (!value) return true
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const profileSchema = z.object({
+  avatar: z.string().refine(isOptionalHttpsUrl, 'Təhlükəsiz HTTPS şəkil linki daxil edin'),
 })
-type FormValues = z.infer<typeof schema>
+
+type ProfileValues = z.infer<typeof profileSchema>
 
 interface ProfileStepProps {
-  data: MentorOnboardingData
-  onNext: (values: FormValues) => void
+  data: MentorApplicationFormData
+  onNext: (values: ProfileValues) => void
 }
 
 export function ProfileStep({ data, onNext }: ProfileStepProps) {
-  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { fullName: data.fullName, email: data.email, password: data.password, agree: data.agree },
+  } = useForm<ProfileValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: { avatar: data.avatar },
   })
+  const avatar = useWatch({ control, name: 'avatar' })
+  const initials =
+    data.fullName
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'M'
 
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-ink-900">Profilini yarat</h1>
-        <p className="mt-1 text-sm text-ink-500">Tələbələrin səni belə tanıyacaq.</p>
+        <p className="text-sm font-semibold text-primary-600">Addım 1 / 3</p>
+        <h1 className="mt-1 text-2xl font-semibold text-ink-900">Profil məlumatları</h1>
+        <p className="mt-1 text-sm text-ink-500">Müraciətiniz mövcud Mynera hesabınıza bağlanacaq.</p>
       </div>
 
-      <div className="flex flex-col items-center gap-2 self-center">
-        <Avatar className="size-20">
-          <AvatarImage src={data.avatarUrl} />
-          <AvatarFallback>
-            <User className="size-8 text-ink-400" />
-          </AvatarFallback>
+      <div className="flex items-center gap-4 rounded-xl border border-ink-100 bg-white p-4">
+        <Avatar className="size-20 border border-ink-100">
+          <AvatarImage src={avatar} alt={data.fullName} />
+          <AvatarFallback className="bg-primary-50 font-semibold text-primary-700">{initials}</AvatarFallback>
         </Avatar>
-        <button type="button" className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:underline">
-          <Pencil className="size-3.5" />
-          Redaktə edin
-        </button>
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-ink-900">Peşəkar profil şəkli</p>
+          <p className="mt-1 text-xs leading-5 text-ink-500">
+            LinkedIn və ya şəxsi saytınızdakı şəklin təhlükəsiz HTTPS linkini əlavə edin.
+          </p>
+        </div>
       </div>
 
       <div>
-        <Label htmlFor="fullName">Ad soyad</Label>
-        <Input id="fullName" placeholder="Ad və soyadını daxil et" invalid={!!errors.fullName} {...register('fullName')} />
-        {errors.fullName && <p className="mt-1.5 text-xs text-danger-500">{errors.fullName.message}</p>}
-      </div>
-
-      <div>
-        <Label htmlFor="mentor-email">Gmail</Label>
+        <Label htmlFor="mentor-avatar">Avatar linki</Label>
         <Input
-          id="mentor-email"
-          type="email"
-          placeholder="Gmail daxil et"
-          leftIcon={<Mail className="size-4" />}
-          invalid={!!errors.email}
-          {...register('email')}
+          id="mentor-avatar"
+          type="url"
+          placeholder="https://example.com/avatar.jpg"
+          leftIcon={<Image className="size-4" />}
+          invalid={!!errors.avatar}
+          {...register('avatar')}
         />
-        {errors.email && <p className="mt-1.5 text-xs text-danger-500">{errors.email.message}</p>}
+        {errors.avatar && <p className="mt-1.5 text-xs text-danger-500">{errors.avatar.message}</p>}
       </div>
 
       <div>
-        <Label htmlFor="mentor-password">Şifrə</Label>
-        <Input
-          id="mentor-password"
-          type={showPassword ? 'text' : 'password'}
-          placeholder="Şifrəni daxil et"
-          invalid={!!errors.password}
-          rightSlot={
-            <button type="button" onClick={() => setShowPassword((s) => !s)} className="text-ink-400 hover:text-ink-700">
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
-          }
-          {...register('password')}
-        />
-        {errors.password && <p className="mt-1.5 text-xs text-danger-500">{errors.password.message}</p>}
+        <Label htmlFor="mentor-full-name">Ad və soyad</Label>
+        <Input id="mentor-full-name" value={data.fullName} leftIcon={<User className="size-4" />} readOnly />
+      </div>
+
+      <div>
+        <Label htmlFor="mentor-email">E-poçt</Label>
+        <Input id="mentor-email" type="email" value={data.email} leftIcon={<Mail className="size-4" />} readOnly />
+      </div>
+
+      <div className="flex items-start gap-2 rounded-lg bg-success-50 p-3 text-xs leading-5 text-success-600">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        Ad və e-poçt təsdiqlənmiş hesabınızdan götürülüb. Müraciət təsdiqlənənədək mentor səlahiyyətləri verilməyəcək.
       </div>
 
       <Button type="submit" size="lg" className="w-full">
         Növbəti
       </Button>
-
-      <label className="flex items-start gap-2.5 text-sm text-ink-600">
-        <Controller
-          control={control}
-          name="agree"
-          render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} className="mt-0.5" />}
-        />
-        Qeydiyyatdan keçərək İstifadə Şərtləri və Məxfilik Siyasəti ilə razılaşıram.
-      </label>
-      {errors.agree && <p className="-mt-4 text-xs text-danger-500">{errors.agree.message}</p>}
     </form>
   )
 }

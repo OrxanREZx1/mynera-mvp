@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count
 
-from .models import Mentor, MentorRequest
+from .models import Mentor, MentorApplication, MentorRequest
 
 
 @admin.register(Mentor)
@@ -50,3 +50,28 @@ class MentorRequestAdmin(admin.ModelAdmin):
     @admin.display(description="Mövzu")
     def short_topic(self, obj):
         return obj.topic[:60]
+
+
+@admin.register(MentorApplication)
+class MentorApplicationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "professional_field",
+        "seniority",
+        "experience_years",
+        "country",
+        "status",
+        "submitted_at",
+    )
+    list_filter = ("status", "seniority", "professional_field", "country")
+    search_fields = (
+        "user__email",
+        "user__full_name",
+        "professional_field",
+        "skills",
+        "linkedin",
+    )
+    list_select_related = ("user",)
+    ordering = ("-submitted_at",)
+    readonly_fields = ("user", "submitted_at", "updated_at")

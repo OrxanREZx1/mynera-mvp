@@ -22,6 +22,10 @@ class ChatRequestSerializer(serializers.Serializer):
     history = ChatMessageInSerializer(many=True, required=False, default=list)
 
 
+class GuestDiagnosticAnswerSerializer(serializers.Serializer):
+    message = serializers.CharField(allow_blank=False, trim_whitespace=True, max_length=2000)
+
+
 class GenerateRoadmapRequestSerializer(serializers.Serializer):
     founder = serializers.CharField(allow_blank=True, required=False, default="")
     idea = serializers.CharField(allow_blank=True, required=False, default="")

@@ -2,6 +2,33 @@ from django.conf import settings
 from django.db import models
 
 
+class GuestDiagnosticSession(models.Model):
+    """Anonymous three-question Aira onboarding, keyed by the browser session."""
+
+    session_id = models.UUIDField(unique=True, db_index=True)
+    status = models.CharField(max_length=120, blank=True, default="")
+    it_level = models.CharField(max_length=120, blank=True, default="")
+    goal = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    @property
+    def next_step(self):
+        if not self.status:
+            return "status"
+        if not self.it_level:
+            return "it_level"
+        if not self.goal:
+            return "goal"
+        return "complete"
+
+    def __str__(self):
+        return f"Guest diagnostic {self.session_id} ({self.next_step})"
+
+
 class RoadmapPlan(models.Model):
     """
     Aira ilə söhbətdən sonra AI tərəfindən yaradılan, istifadəçiyə məxsus
@@ -26,11 +53,15 @@ class RoadmapPlan(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="roadmap_plans",
+        null=True,
+        blank=True,
     )
+    session_id = models.UUIDField(null=True, blank=True, db_index=True)
     title = models.CharField(max_length=255)
     recommended_field = models.CharField(max_length=120, blank=True, default="")
     source_answers = models.JSONField(
-        default=dict, help_text="Aira-nın roadmap qurmaq üçün istifadə etdiyi 5 cavab"
+        default=dict,
+        help_text="Aira-nın fərdi roadmap qurmaq üçün istifadə etdiyi diaqnostik cavablar",
     )
     modules = models.JSONField(default=list)
     is_active = models.BooleanField(default=True)
@@ -42,11 +73,20 @@ class RoadmapPlan(models.Model):
         verbose_name_plural = "Roadmap planları"
 
     def __str__(self):
-        return f"{self.title} — {self.user}"
+        owner = self.user or self.session_id
+        return f"{self.title} — {owner}"
 
     @classmethod
     def get_active_for_user(cls, user):
         return cls.objects.filter(user=user, is_active=True).order_by("-created_at").first()
+
+    @classmethod
+    def get_active_for_session(cls, session_id):
+        return (
+            cls.objects.filter(user__isnull=True, session_id=session_id, is_active=True)
+            .order_by("-created_at")
+            .first()
+        )
 
     def total_lessons(self):
         return sum(len(m.get("lessons", [])) for m in self.modules)
@@ -78,7 +118,10 @@ class ChatMessageLog(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="aira_messages",
+        null=True,
+        blank=True,
     )
+    session_id = models.UUIDField(null=True, blank=True, db_index=True)
     role = models.CharField(max_length=16, choices=ROLE_CHOICES)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

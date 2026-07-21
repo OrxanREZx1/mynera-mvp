@@ -27,9 +27,11 @@ const sheetVariants = cva(
     variants: {
       side: {
         top: 'inset-x-0 top-0 border-b data-[state=closed]:animate-fade-in data-[state=open]:animate-fade-in',
-        bottom: 'inset-x-0 bottom-0 rounded-t-lg border-t data-[state=closed]:animate-fade-in data-[state=open]:animate-fade-in',
+        bottom:
+          'inset-x-0 bottom-0 rounded-t-lg border-t data-[state=closed]:animate-fade-in data-[state=open]:animate-fade-in',
         left: 'inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:animate-fade-in data-[state=open]:animate-fade-in sm:max-w-sm',
-        right: 'inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:animate-fade-in data-[state=open]:animate-fade-in sm:max-w-sm',
+        right:
+          'inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:animate-fade-in data-[state=open]:animate-fade-in sm:max-w-sm',
       },
     },
     defaultVariants: { side: 'right' },
@@ -37,19 +39,22 @@ const sheetVariants = cva(
 )
 
 interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>, VariantProps<typeof sheetVariants> {
+  showCloseButton?: boolean
+}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, SheetContentProps>(
-  ({ side = 'right', className, children, ...props }, ref) => (
+  ({ side = 'right', className, children, showCloseButton = true, ...props }, ref) => (
     <SheetPortal>
       <SheetOverlay />
       <DialogPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
         {children}
-        <DialogPrimitive.Close className="absolute right-5 top-5 rounded-full p-1.5 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300">
-          <X className="size-4" />
-          <span className="sr-only">Bağla</span>
-        </DialogPrimitive.Close>
+        {showCloseButton && (
+          <DialogPrimitive.Close className="absolute right-5 top-5 rounded-full p-1.5 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300">
+            <X className="size-4" />
+            <span className="sr-only">Bağla</span>
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </SheetPortal>
   )

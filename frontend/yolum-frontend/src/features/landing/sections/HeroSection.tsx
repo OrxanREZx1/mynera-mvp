@@ -28,13 +28,13 @@ export function HeroSection() {
           </h1>
 
           <p className="max-w-lg text-lg text-ink-600">
-            Yolum IT karyeranı seçməyinə kömək edən AI köməkçisidir. Sənin üçün fərdiləşdirilmiş inkişaf planı
-            yaradır və səni real mentorlarla əlaqələndirir.
+            Yolum IT karyeranı seçməyinə kömək edən AI köməkçisidir. Sənin üçün fərdiləşdirilmiş inkişaf planı yaradır
+            və səni real mentorlarla əlaqələndirir.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link to="/onboarding/user">
+              <Link to="/demo">
                 Başla <ArrowRight className="size-4" />
               </Link>
             </Button>
@@ -45,16 +45,19 @@ export function HeroSection() {
 
           <div className="flex items-center gap-4 pt-2 text-sm text-ink-500">
             <div className="flex -space-x-2.5">
-              {['1494790108377-be9c29b29330', '1500648767791-00dcc994a43e', '1531123897727-8f129e1688ce', '1573497019940-1c28c88b4f3e'].map(
-                (id) => (
-                  <img
-                    key={id}
-                    src={`https://images.unsplash.com/photo-${id}?w=64&h=64&fit=crop&crop=faces`}
-                    alt=""
-                    className="size-8 rounded-full border-2 border-white object-cover"
-                  />
-                )
-              )}
+              {[
+                '1494790108377-be9c29b29330',
+                '1500648767791-00dcc994a43e',
+                '1531123897727-8f129e1688ce',
+                '1573497019940-1c28c88b4f3e',
+              ].map((id) => (
+                <img
+                  key={id}
+                  src={`https://images.unsplash.com/photo-${id}?w=64&h=64&fit=crop&crop=faces`}
+                  alt=""
+                  className="size-8 rounded-full border-2 border-white object-cover"
+                />
+              ))}
             </div>
             <span>2,400+ istifadəçi artıq yoluna başladı</span>
           </div>
@@ -68,7 +71,11 @@ export function HeroSection() {
         >
           <div className="absolute size-80 rounded-full bg-gradient-to-br from-primary-100 to-primary-50 blur-2xl" />
           <div className="relative w-full max-w-sm">
-            <img src={airaMascot} alt="Aira AI köməkçisi" className="relative z-10 mx-auto w-56 drop-shadow-2xl sm:w-72" />
+            <img
+              src={airaMascot}
+              alt="Aira AI köməkçisi"
+              className="relative z-10 mx-auto w-56 drop-shadow-2xl sm:w-72"
+            />
 
             <motion.div
               animate={{ y: [0, -10, 0] }}

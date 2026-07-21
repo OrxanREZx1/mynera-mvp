@@ -14,6 +14,7 @@ const VerifyOtpPage = lazy(() => import('@/features/auth/VerifyOtpPage'))
 const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage'))
 const UserSignupPage = lazy(() => import('@/features/onboarding/user/UserSignupPage'))
 const MentorSignupPage = lazy(() => import('@/features/onboarding/mentor/MentorSignupPage'))
+const MentorApplicationStatusPage = lazy(() => import('@/features/onboarding/mentor/MentorApplicationStatusPage'))
 
 const ChatPage = lazy(() => import('@/features/chat/ChatPage'))
 const RoadmapPage = lazy(() => import('@/features/roadmap/RoadmapPage'))
@@ -63,17 +64,19 @@ const router = createBrowserRouter([
           { path: '/reset-password', element: withSuspense(<ResetPasswordPage />) },
         ],
       },
-      { path: '/assessment', element: withSuspense(<UserSignupPage flow="assessment" />) },
-      { path: '/onboarding/user', element: withSuspense(<UserSignupPage flow="direct" />) },
-      { path: '/signup', element: <Navigate to="/onboarding/user" replace /> },
-      { path: '/mentor/signup', element: withSuspense(<MentorSignupPage />) },
+      { path: '/assessment', element: withSuspense(<UserSignupPage />) },
+      { path: '/onboarding/user', element: <Navigate to="/demo" replace /> },
+      { path: '/signup', element: <Navigate to="/assessment" replace /> },
     ],
   },
+  { path: '/mentor/signup', element: <Navigate to="/mentor/apply" replace /> },
   // Public MVP demo: marketplace APIs are AllowAny and receive the anonymous
   // X-Session-Id through the shared Axios client.
   {
     element: <AppLayout />,
     children: [
+      { path: '/demo', element: withSuspense(<ChatPage guestMode />) },
+      { path: '/demo/roadmap', element: withSuspense(<RoadmapPage guestMode />) },
       { path: '/mentors', element: withSuspense(<MentorFindPage />) },
       { path: '/mentors/:mentorId', element: withSuspense(<MentorDetailPage />) },
     ],
@@ -81,6 +84,11 @@ const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      { path: '/mentor/apply', element: withSuspense(<MentorSignupPage />) },
+      {
+        path: '/mentor/application-status',
+        element: withSuspense(<MentorApplicationStatusPage />),
+      },
       {
         element: <AppLayout />,
         children: [

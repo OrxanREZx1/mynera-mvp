@@ -157,7 +157,7 @@ export default function LoginPage() {
         </Link>
       </p>
       <p className="text-center text-sm">
-        <Link to="/mentor/signup" className="font-medium text-ink-500 hover:text-primary-600 hover:underline">
+        <Link to="/mentor/apply" className="font-medium text-ink-500 hover:text-primary-600 hover:underline">
           Mentor kimi qoşul
         </Link>
       </p>
